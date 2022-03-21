@@ -1,0 +1,16 @@
+{
+  "presets": [["@babel/preset-env", {
+    "targets": {
+      "chrome": "58",
+      "ie": "11",
+      "safari": "9",
+      "firefox": "7",
+      "edge": "38"
+    }
+  }]],
+  "plugins": [
+    "@babel/plugin-transform-regenerator",
+    "@babel/plugin-transform-async-to-generator",
+    "@babel/plugin-proposal-class-properties"
+  ]
+}

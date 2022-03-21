@@ -1,0 +1,13 @@
+@charset "utf-8";
+@import "variables";
+
+:root{
+  --windowWidth:100vw;
+  --windowHeight:100vh;
+}
+html{
+  font-size:14px;
+  line-height:1.45;
+  font-weight:500;
+  background:#13670B;
+}

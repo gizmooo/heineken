@@ -1,0 +1,38 @@
+{
+  "compilerOptions": {
+    "lib": [
+      "WebWorker",
+      "DOM",
+      "DOM.Iterable",
+      "ESNext",
+      "ScriptHost"
+    ],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "strict": true,
+    "forceConsistentCasingInFileNames": true,
+    "module": "esnext",
+    "moduleResolution": "node",
+    "resolveJsonModule": true,
+    "isolatedModules": false,
+    "noEmit": false,
+    "target": "es2017",
+////    ie11
+//    "target": "es5",
+    "sourceMap": true,
+    "outDir": "prod/build",
+    "baseUrl": "./",
+    "paths": {
+      "MEDIA/*": ["dev/media/*"],
+      "IMAGES/*": ["dev/media/images/*"],
+      "TYPES/*": ["dev/js/types/*"]
+    }
+  },
+  "exclude": ["node_modules"],
+  "files": [
+    "./dev/entry.ts"
+  ],
+  "include": ["dev", "./dev/js/global.d.ts"]
+}

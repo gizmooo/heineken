@@ -1,0 +1,135 @@
+@charset "utf-8";
+
+// version 1.0.2
+
+@import 'variables';
+
+html, body, div, span, applet, object, iframe,
+h1, h2, h3, h4, h5, h6, p, blockquote, pre,
+a, abbr, acronym, address, big, cite, code,
+del, dfn, em, img, ins, kbd, q, s, samp,
+small, strike, strong, sub, sup, tt, var,
+b, u, i, center,
+dl, dt, dd, ol, ul, li,
+fieldset, form, label, option, select, legend,
+table, caption, tbody, tfoot, thead, tr, th, td,
+article, aside, canvas, details, embed,
+figure, figcaption, footer, header,
+menu, nav, output, ruby, section, summary,
+time, mark, audio, video{
+  margin:0;
+  padding:0;
+  border:none;
+  //outline:none;
+
+  &::selection{
+    color:$selectionColor;
+    background:$selection;
+  }
+  &::-moz-selection{
+    color:$selectionColor;
+    background:$selection;
+  }
+}
+html{
+  height:100%;
+  font-family:'Helvetica', sans-serif;
+  background:#FFF;
+
+  &[lang='en'], &[lang='ru']{
+    font-family:$defaultText;
+  }
+}
+//main{
+//  height:100%;
+//}
+
+
+body{
+  width:100%;
+  height:100%;
+  color:$defaultTextColor;
+}
+body, canvas{
+  -moz-osx-font-smoothing:grayscale;
+  -webkit-font-smoothing:antialiased;
+  -moz-text-size-adjust:none;
+  -webkit-text-size-adjust:none;
+  -ms-text-size-adjust:none;
+}
+
+canvas{
+  font-family:$defaultText;
+}
+
+ul, ol{
+  list-style:none;
+}
+a{
+  text-decoration:none;
+  img{
+    border:none;
+  }
+}
+
+input, textarea, select{
+  margin:0;
+  padding:0;
+  background:transparent;
+  border-radius:0;
+
+  //&:focus{
+  //  outline:none;
+  //}
+}
+:invalid, :-moz-submit-invalid, :-moz-ui-invalid{
+  box-shadow:none;
+}
+
+
+button{
+  display:block;
+  border:none;
+  font:inherit;
+  color:inherit;
+  padding:0;
+  margin:0;
+  box-sizing:content-box;
+  cursor:pointer;
+  overflow:visible;
+  background:none;
+
+  &:focus{
+    border:none;
+  }
+}
+
+
+.no-hover *{
+  pointer-events:none !important;
+} // 60 fps
+
+
+.prevent-scroll{
+  overflow:hidden !important;
+}
+
+.no-outline{
+  *{
+    outline:none !important;
+  }
+}
+
+.rubl{
+  &:after{
+    content:'\20BD';
+    display:inline-block;
+    margin-left:0.4em;
+    transform:scale(1.2, 1);
+    font-size:0.92em;
+  }
+}
+
+.defs{
+  display:none;
+}
