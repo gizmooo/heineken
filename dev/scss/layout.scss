@@ -11,3 +11,31 @@ html{
   font-weight:500;
   background:#13670B;
 }
+
+.container{
+  width: 100vw;
+  height: 100vh;
+}
+.buttons{
+  padding:25px;
+  display:flex;
+  flex-wrap:wrap;
+  position: fixed;
+  bottom:0;
+  left:0;
+  right:0;
+  z-index:10;
+
+  button{
+    padding:5px 10px;
+    margin-right:5px;
+    background:#FFFFFF;
+  }
+}
+.status{
+  width:100%;
+  box-sizing:border-box;
+  padding:10px 0;
+  color:#fff;
+  font-size:12px;
+}
