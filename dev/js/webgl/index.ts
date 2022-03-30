@@ -1,21 +1,18 @@
 import './styles/style.scss';
 
 import {
-  ACESFilmicToneMapping, AmbientLight, AnimationMixer, Clock, Color, Group, LinearFilter, Mesh, MeshBasicMaterial,
-  MeshStandardMaterial, MeshStandardMaterialParameters, NearestFilter, PCFSoftShadowMap, PerspectiveCamera,
+  ACESFilmicToneMapping, AmbientLight, AnimationMixer, Clock, Color, FrontSide, Group, LinearFilter, Mesh,
+  MeshBasicMaterial, MeshStandardMaterial, NearestFilter, PCFSoftShadowMap, PerspectiveCamera,
   PlaneGeometry, PointLight, Scene, ShadowMaterial, sRGBEncoding, Texture, TextureLoader, WebGLRenderer
 } from 'three';
 import {GLTFLoader, GLTF} from 'three/examples/jsm/loaders/GLTFLoader';
+import {DRACOLoader} from 'three/examples/jsm/loaders/DRACOLoader';
 import {gsap} from 'gsap';
 import ticketTexture from './textures/ticket.png';
 
 
-import fragmentShader from './shaders/shadow.fragment.glsl';
-import {NURBSUtils} from 'three/examples/jsm/curves/NURBSUtils';
-import calcNURBSDerivatives = NURBSUtils.calcNURBSDerivatives;
-
-
-// шейдер естественных теней
+// import fragmentShader from './shaders/shadow.fragment.glsl';
+// шейдер естественных теней - жрет очень много памяти на этих футболистах
 // let shader = THREE.ShaderChunk.shadowmap_pars_fragment;
 //
 // shader = shader.replace(
@@ -38,7 +35,14 @@ import calcNURBSDerivatives = NURBSUtils.calcNURBSDerivatives;
 const className = 'webgl-';
 
 // type State = 'before' | 'ticket' | 'player-left' | 'player-right' | 'after';
-type State = number;
+enum State {
+  'before',
+  'ticket',
+  'play',
+  'left',
+  'right',
+  'after'
+}
 // 0 - пустой экран
 // 1 - билетик
 // 2 - футболисты
@@ -249,9 +253,10 @@ export class WebGL {
     // light.shadow.camera.far = 2000;
     light.position.set(1, -10, 1);
 
-    const width = 1 / 5.9;
+    const scale = 7.1;
+    const width = 1 / scale;
     // соотношение ширины всего билета к высоте половинки / scale
-    const height = 1495/2/912 / 5.9;
+    const height = 1495/2/912 / scale;
     const geometry = new PlaneGeometry(width, height);
 
     texture.repeat.set(1, 0.5);
@@ -316,7 +321,7 @@ export class WebGL {
     const vars = {
       duration: isVisible ? 1 : 0.5,
       delay: 0,
-      ease: undefined,
+      ease: isVisible ? 'power2.out' : undefined,
       overwrite: true
     }
 
@@ -377,14 +382,8 @@ export class WebGL {
     actionLeft.play();
     actionRight.play();
     mixerLeft.setTime(1);
-    // mixerRight.setTime(10);
 
-    // временно
-    // const textureLoader = new TextureLoader();
-    // const map = textureLoader.load('./models/379603214-skin_02_diffuse.png');
-    // const normalMap = textureLoader.load('./models/379603222-player_normal_map.png');
-
-    const props = ['map'] as const;
+    // const props = ['map'] as const;
 
     const traverse = (group: Group) => {
       group.traverse((object) => {
@@ -394,6 +393,7 @@ export class WebGL {
           const basic = obj.material as MeshBasicMaterial;
           basic.transparent = true;
           basic.opacity = 0;
+          basic.side = FrontSide;
 
           // const params: MeshStandardMaterialParameters = {};
           //
@@ -405,7 +405,8 @@ export class WebGL {
           // console.log(standard)
 
           obj.castShadow = true;
-          obj.receiveShadow = true;
+          // вот из-за этого были артефакты на груди
+          // obj.receiveShadow = true;
         }
       })
     }
@@ -416,15 +417,15 @@ export class WebGL {
     right.group = rightGroup;
 
     traverse(leftGroup);
-    leftGroup.scale.setScalar(10);
-    leftGroup.position.x = -14;
-    leftGroup.position.z = -8;
-    leftGroup.position.y = -0.2;
-    leftGroup.rotation.y = -Math.PI / 3;
+    leftGroup.scale.setScalar(7.7);
+    leftGroup.position.x = -12;
+    leftGroup.position.z = -0.5;
+    leftGroup.position.y = -0.1;
+    leftGroup.rotation.y = -Math.PI / 5;
 
     traverse(rightGroup);
-    rightGroup.scale.setScalar(10);
-    rightGroup.position.x = 16;
+    rightGroup.scale.setScalar(8.3);
+    rightGroup.position.x = 12;
     rightGroup.rotation.y = Math.PI / 5;
 
     const geometry = new PlaneGeometry(150, 150);
@@ -441,11 +442,11 @@ export class WebGL {
     const shadowLight = new PointLight(0xFFFFFF, 0.5);
     shadowLight.castShadow = true;
     shadowLight.position.set(0, 1500, 100);
-    shadowLight.shadow.mapSize.width = 1024;
-    shadowLight.shadow.mapSize.height = 1024;
+    shadowLight.shadow.mapSize.width = 4024;
+    shadowLight.shadow.mapSize.height = 4024;
     shadowLight.shadow.camera.near = 1;
     shadowLight.shadow.camera.far = 2000;
-    // shadowLight.shadow.bias = -0.000222;
+    shadowLight.shadow.bias = -0.000222;
 
     // const light = new PointLight(0xFFFFFF, 0.9, 350);
     // light.position.set(0, 15, 10);
@@ -478,9 +479,9 @@ export class WebGL {
     const {master, shadow, left, right} = this._players;
 
     const vars = {
-      duration: isVisible ? 1 : 0.5,
+      duration: isVisible ? 0.8 : 0.4,
       delay: 0,
-      ease: undefined,
+      ease: 'power2.out',
       overwrite: true
     }
 
@@ -557,8 +558,11 @@ export class WebGL {
     });
 
     const modelLoader = new GLTFLoader();
-    const leftPlayerPromise = modelLoader.loadAsync('./models/Player_Animation_1_idle.gltf');
-    const rightPlayerPromise = modelLoader.loadAsync('./models/Player_Animation_2_idle.gltf');
+    const dracoLoader = new DRACOLoader();
+    dracoLoader.setDecoderPath('./models/');
+    modelLoader.setDRACOLoader(dracoLoader);
+    const leftPlayerPromise = modelLoader.loadAsync('./models/idle_girl.gltf');
+    const rightPlayerPromise = modelLoader.loadAsync('./models/idle_man.gltf');
 
     // await Promise.all([texturePromise, leftPlayerPromise]);
     const ticket = await texturePromise;
@@ -581,13 +585,16 @@ export class WebGL {
   // public set onProgress(func: (progress: number) => void) {
   //   this._onProgress = func;
   // }
+  public get state() {
+    return this._state;
+  }
   public set state(state: State) {
     if (!this._isLoaded || state === this._state) return;
 
     // защита от дурака(без негатива, конечно)
-    state = Math.round(state);
-    state = Math.max(state, 0);
-    state = Math.min(state, 5);
+    state = Math.round(state) as State;
+    state = Math.max(state, 0) as State;
+    state = Math.min(state, 5) as State;
 
     const defaultTicketEvent: TicketChangeEvent = {
       groupPositionX: 0,
@@ -602,10 +609,10 @@ export class WebGL {
       groupPositionX: 0,
       groupPositionY: -46,
       groupPositionZ: -500,
-      leftPositionX: -14,
-      rightPositionX: 16,
+      leftPositionX: -11.5,
+      rightPositionX: 11.5,
       leftRotationY: -Math.PI / 3,
-      rightRotationY: Math.PI / 5,
+      rightRotationY: Math.PI / 3,
       leftOpacity: 0,
       rightOpacity: 0,
       isVisible: false
@@ -635,7 +642,7 @@ export class WebGL {
           {
             ...defaultTicketEvent,
             groupPositionX: 0.005,
-            groupPositionY: 0.077,
+            groupPositionY: 0.124,
             groupPositionZ: -1,
             groupRotationZ: -0.14,
             // halfRotationX: 0,
@@ -656,7 +663,7 @@ export class WebGL {
           ...defaultPlayersEvent,
           groupPositionX: 0,
           groupPositionZ: -200,
-          leftRotationY: -Math.PI / 10,
+          leftRotationY: -Math.PI / 14,
           rightRotationY: Math.PI / 16,
           rightOpacity: 1,
           leftOpacity: 1,
@@ -672,12 +679,12 @@ export class WebGL {
         this._changePlayers({
           ...defaultPlayersEvent,
             groupPositionX: 0,
-            groupPositionY: -64,
-            groupPositionZ: -90,
+            groupPositionY: -50,
+            groupPositionZ: -79,
             leftPositionX: 0,
-            rightPositionX: 32,
+            rightPositionX: 35,
             leftRotationY: 0,
-            rightOpacity: 0,
+            rightOpacity: 1,
             leftOpacity: 1,
             isVisible: true
         },
@@ -691,13 +698,13 @@ export class WebGL {
         this._changePlayers({
           ...defaultPlayersEvent,
             groupPositionX: 0,
-            groupPositionY: -64,
-            groupPositionZ: -90,
-            leftPositionX: -28,
+            groupPositionY: -54,
+            groupPositionZ: -87,
+            leftPositionX: -35,
             rightPositionX: 0,
             rightRotationY: 0,
             rightOpacity: 1,
-            leftOpacity: 0,
+            leftOpacity: 1,
             isVisible: true
         },
           () => {},
@@ -709,15 +716,28 @@ export class WebGL {
         this._changeTicket(defaultTicketEvent);
         this._changePlayers({
           ...defaultPlayersEvent,
-            groupPositionX: -20,
-            groupPositionY: -64,
-            groupPositionZ: -90,
-            leftPositionX: -28,
-            rightPositionX: 0,
-            rightRotationY: -Math.PI / 10,
-            rightOpacity: 0,
-            leftOpacity: 0,
-            isVisible: false
+          ...(this._state === 3 ?
+            {
+              groupPositionX: -20,
+              groupPositionY: -50,
+              groupPositionZ: -79,
+              rightPositionX: 55,
+              rightRotationY: Math.PI / 16
+            } : {
+              groupPositionX: -45,
+              groupPositionY: -54,
+              groupPositionZ: -87,
+              rightPositionX: 11.5,
+              rightRotationY: -Math.PI / 3
+            }
+          ),
+            // groupPositionX: -35,
+            // groupPositionY: -54,
+            // groupPositionZ: -87,
+            // leftPositionX: -28,
+            rightOpacity: 1,
+            leftOpacity: 1,
+            isVisible: true
         },
           () => this.stop(),
           () => this._onChange(5));
