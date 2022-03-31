@@ -9,8 +9,8 @@ import 'regenerator-runtime/runtime';
 import {WebGL} from './webgl';
 const container = document.querySelector<HTMLDivElement>('.container');
 if (container) {
-  // создание инстанса всея анимации
-  const webgl = new WebGL(container);
+  // создание инстанса всея анимации и настройка под ретину
+  const webgl = new WebGL(container, false);
 
 
   const buttons = document.createElement('div');

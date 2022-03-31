@@ -99,7 +99,7 @@ export class WebGL {
   private readonly onResize: () => void;
   private readonly tick: () => void;
 
-  constructor(container: HTMLElement) {
+  constructor(container: HTMLElement, retina?: boolean) {
     this._isLoaded = false;
     this._isActive = false;
     this._state = 0;
@@ -113,7 +113,7 @@ export class WebGL {
     this._createBG();
 
     this._clock = new Clock();
-    this._renderer = this._createRenderer();
+    this._renderer = this._createRenderer(retina);
     this._scene = new Scene();
     this._camera = new PerspectiveCamera(45, 1, 0.01, 1000);
 
@@ -177,7 +177,7 @@ export class WebGL {
     this._isActive = false;
   }
 
-  private _createRenderer() {
+  private _createRenderer(retina?: boolean) {
     const renderer = new WebGLRenderer({
       alpha: true,
       antialias: true,
@@ -191,7 +191,7 @@ export class WebGL {
     renderer.toneMappingExposure = 1;
     renderer.outputEncoding = sRGBEncoding;
 
-    renderer.setPixelRatio(window.devicePixelRatio || 1);
+    if (retina) renderer.setPixelRatio(window.devicePixelRatio || 1);
 
     this._wrapper.appendChild(renderer.domElement);
 
