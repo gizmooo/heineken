@@ -10,7 +10,7 @@ import {WebGL} from './webgl';
 const container = document.querySelector<HTMLDivElement>('.container');
 if (container) {
   // создание инстанса всея анимации и настройка под ретину
-  const webgl = new WebGL(container, false);
+  const webgl = new WebGL(container, true);
 
 
   const buttons = document.createElement('div');
