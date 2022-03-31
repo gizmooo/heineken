@@ -6,29 +6,8 @@ import {
   PlaneGeometry, PointLight, Scene, ShadowMaterial, sRGBEncoding, Texture, TextureLoader, WebGLRenderer
 } from 'three';
 import {GLTFLoader, GLTF} from 'three/examples/jsm/loaders/GLTFLoader';
-import {DRACOLoader} from 'three/examples/jsm/loaders/DRACOLoader';
 import {gsap} from 'gsap';
 import ticketTexture from './textures/ticket.png';
-
-
-// import fragmentShader from './shaders/shadow.fragment.glsl';
-// шейдер естественных теней - жрет очень много памяти на этих футболистах
-// let shader = THREE.ShaderChunk.shadowmap_pars_fragment;
-//
-// shader = shader.replace(
-//   '#ifdef USE_SHADOWMAP',
-//   `#ifdef USE_SHADOWMAP
-//   ${fragmentShader}
-// `
-// );
-//
-// shader = shader.replace(
-//   '#if defined( SHADOWMAP_TYPE_PCF )',
-//   `  return PCSS( shadowMap, shadowCoord );
-//   #if defined( SHADOWMAP_TYPE_PCF )`
-// );
-//
-// THREE.ShaderChunk.shadowmap_pars_fragment = shader;
 
 
 
@@ -404,7 +383,8 @@ export class WebGL {
           // const standard = new MeshStandardMaterial(params);
           // console.log(standard)
 
-          obj.castShadow = true;
+          // падающая тень от персов
+          // obj.castShadow = true;
           // вот из-за этого были артефакты на груди
           // obj.receiveShadow = true;
         }
@@ -417,10 +397,10 @@ export class WebGL {
     right.group = rightGroup;
 
     traverse(leftGroup);
-    leftGroup.scale.setScalar(7.7);
+    leftGroup.scale.setScalar(8);
     leftGroup.position.x = -12;
-    leftGroup.position.z = -0.5;
-    leftGroup.position.y = -0.1;
+    leftGroup.position.z = -4;
+    leftGroup.position.y = -0.5;
     leftGroup.rotation.y = -Math.PI / 5;
 
     traverse(rightGroup);
@@ -428,25 +408,26 @@ export class WebGL {
     rightGroup.position.x = 12;
     rightGroup.rotation.y = Math.PI / 5;
 
-    const geometry = new PlaneGeometry(150, 150);
-    geometry.rotateX(-Math.PI / 2);
-    shadow.opacity = 0;
-    const mesh = new Mesh(geometry, shadow);
-    mesh.receiveShadow = true;
-
 
     // master.visible = false;
     master.position.y = -46;
     master.position.z = -500;
 
-    const shadowLight = new PointLight(0xFFFFFF, 0.5);
-    shadowLight.castShadow = true;
-    shadowLight.position.set(0, 1500, 100);
-    shadowLight.shadow.mapSize.width = 4024;
-    shadowLight.shadow.mapSize.height = 4024;
-    shadowLight.shadow.camera.near = 1;
-    shadowLight.shadow.camera.far = 2000;
-    shadowLight.shadow.bias = -0.000222;
+
+    // падающая тень от персов
+    // const geometry = new PlaneGeometry(150, 150);
+    // geometry.rotateX(-Math.PI / 2);
+    // shadow.opacity = 0;
+    // const mesh = new Mesh(geometry, shadow);
+    // mesh.receiveShadow = true;
+    // const shadowLight = new PointLight(0xFFFFFF, 0.5);
+    // shadowLight.castShadow = true;
+    // shadowLight.position.set(0, 1500, 100);
+    // shadowLight.shadow.mapSize.width = 4024;
+    // shadowLight.shadow.mapSize.height = 4024;
+    // shadowLight.shadow.camera.near = 1;
+    // shadowLight.shadow.camera.far = 2000;
+    // shadowLight.shadow.bias = -0.000222;
 
     // const light = new PointLight(0xFFFFFF, 0.9, 350);
     // light.position.set(0, 15, 10);
@@ -459,7 +440,7 @@ export class WebGL {
     // lightRight.position.set(130, 10, 0);
 
 
-    master.add(leftGroup, rightGroup, mesh, shadowLight);
+    master.add(leftGroup, rightGroup);
     // group.add(leftGroup, rightGroup, mesh, shadowLight, light, lightLeft, lightRight);
     // group.add(left, mesh, light2);
     this._scene.add(master);
@@ -558,11 +539,8 @@ export class WebGL {
     });
 
     const modelLoader = new GLTFLoader();
-    const dracoLoader = new DRACOLoader();
-    dracoLoader.setDecoderPath('./models/');
-    modelLoader.setDRACOLoader(dracoLoader);
-    const leftPlayerPromise = modelLoader.loadAsync('./models/idle_girl.gltf');
-    const rightPlayerPromise = modelLoader.loadAsync('./models/idle_man.gltf');
+    const leftPlayerPromise = modelLoader.loadAsync('./models/girl_shadow.gltf');
+    const rightPlayerPromise = modelLoader.loadAsync('./models/man_shadow.gltf');
 
     // await Promise.all([texturePromise, leftPlayerPromise]);
     const ticket = await texturePromise;
@@ -609,8 +587,8 @@ export class WebGL {
       groupPositionX: 0,
       groupPositionY: -46,
       groupPositionZ: -500,
-      leftPositionX: -11.5,
-      rightPositionX: 11.5,
+      leftPositionX: -12,
+      rightPositionX: 12,
       leftRotationY: -Math.PI / 3,
       rightRotationY: Math.PI / 3,
       leftOpacity: 0,
@@ -679,7 +657,7 @@ export class WebGL {
         this._changePlayers({
           ...defaultPlayersEvent,
             groupPositionX: 0,
-            groupPositionY: -50,
+            groupPositionY: -51.5,
             groupPositionZ: -79,
             leftPositionX: 0,
             rightPositionX: 35,
@@ -719,7 +697,7 @@ export class WebGL {
           ...(this._state === 3 ?
             {
               groupPositionX: -20,
-              groupPositionY: -50,
+              groupPositionY: -51.5,
               groupPositionZ: -79,
               rightPositionX: 55,
               rightRotationY: Math.PI / 16
@@ -727,7 +705,7 @@ export class WebGL {
               groupPositionX: -45,
               groupPositionY: -54,
               groupPositionZ: -87,
-              rightPositionX: 11.5,
+              rightPositionX: 12,
               rightRotationY: -Math.PI / 3
             }
           ),
