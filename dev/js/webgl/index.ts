@@ -1,35 +1,30 @@
 import './styles/style.scss';
 
 import {
-  ACESFilmicToneMapping, AmbientLight, AnimationMixer, Clock, Color, FrontSide, Group, LinearFilter, Mesh,
-  MeshBasicMaterial, MeshStandardMaterial, NearestFilter, PCFSoftShadowMap, PerspectiveCamera,
-  PlaneGeometry, PointLight, Scene, ShadowMaterial, sRGBEncoding, Texture, TextureLoader, WebGLRenderer
+  ACESFilmicToneMapping, AmbientLight, AnimationClip, AnimationMixer, Clock, Color,
+  FrontSide, Group, LinearFilter, Mesh, MeshBasicMaterial, MeshStandardMaterial,
+  NearestFilter, PCFSoftShadowMap, PerspectiveCamera, PlaneGeometry, PointLight,
+  Scene, ShadowMaterial, sRGBEncoding, Texture, TextureLoader, WebGLRenderer
 } from 'three';
 import {GLTFLoader, GLTF} from 'three/examples/jsm/loaders/GLTFLoader';
 import {gsap} from 'gsap';
+
 import ticketTexture from './textures/ticket.png';
 
 
 
-const className = 'webgl-';
+const CLASS_NAME = 'webgl-';
 
-// type State = 'before' | 'ticket' | 'player-left' | 'player-right' | 'after';
 enum State {
-  'before',
-  'ticket',
-  'play',
-  'left',
-  'right',
-  'after'
+  'before', // 0 - пустой экран
+  'ticket', // 1 - билетик
+  'play',   // 2 - футболисты
+  'left',   // 3 - футболист слева
+  'right',  // 4 - футболист справа
+  'after'   // 5 - экран с фоном
 }
-// 0 - пустой экран
-// 1 - билетик
-// 2 - футболисты
-// 3 - футболист слева
-// 4 - футболист справа
-// 5 - экран с фоном
 
-type Ticket = {
+interface Ticket {
   master: Group;
   group: Group;
   top: {
@@ -50,8 +45,11 @@ type TicketChangeEvent = {
   opacity: number;
   isVisible: boolean;
 }
-type Player = {
+interface Player {
   mixer?: AnimationMixer;
+  animations: AnimationClip[];
+  activeAnimation: number;
+  time: number;
   group?: Group;
 }
 type PlayerChangeEvent = {
@@ -66,7 +64,60 @@ type PlayerChangeEvent = {
   rightOpacity: number;
   isVisible: boolean;
 }
+type OnChangeHandler = (state: State) => void;
+type OnProgressHandler = (progress: number) => void;
 
+
+
+const _updateMixer = (player: Player, delta: number) => {
+  const {mixer, animations, activeAnimation} = player;
+  if (!mixer) return;
+
+  mixer.update(delta);
+
+  // const time = mixer.time / (animations[activeAnimation].duration * (player.time + 1));
+  // if (time >= 1) {
+  //   mixer.dispatchEvent({
+  //     type: 'finished'
+  //   });
+  //   player.time ++;
+  // }
+}
+
+// Хотелось бы запускать анимацию после того, как закончится предыдущая,
+// но в трихе все через ж
+// const _setClip = (player: Player, isChange: boolean) => {
+//   const {mixer, animations, activeAnimation} = player;
+//   if (!mixer) return;
+//
+//   let newAnimation = 0;
+//
+//   if (isChange) {
+//     if (activeAnimation === 0) {
+//       newAnimation = 1;
+//     } else {
+//       newAnimation = 0;
+//     }
+//   } else {
+//     if (activeAnimation === 0) return;
+//   }
+//   console.log(isChange)
+//   player.activeAnimation = newAnimation;
+//   player.time = 0;
+//   mixer.stopAllAction();
+//   const action = mixer.clipAction(animations[newAnimation]);
+//   action.play();
+// }
+
+const _setClip = (player: Player, clip: number) => {
+  const {mixer, animations, activeAnimation} = player;
+  if (!mixer || activeAnimation === clip) return;
+
+  player.activeAnimation = clip;
+  mixer.stopAllAction();
+  const action = mixer.clipAction(animations[clip]);
+  action.play();
+}
 
 export class WebGL {
   private _isLoaded: boolean;
@@ -94,8 +145,8 @@ export class WebGL {
     right: Player;
   };
 
-  private _onChange: (state: State) => void;
-  private _onProgress: (progress: number) => void;
+  private _onChange: OnChangeHandler;
+  private _onProgress: OnProgressHandler;
   private readonly onResize: () => void;
   private readonly tick: () => void;
 
@@ -132,8 +183,16 @@ export class WebGL {
     this._players = {
       master: new Group(),
       shadow: new ShadowMaterial(),
-      left: {},
-      right: {}
+      left: {
+        animations: [],
+        activeAnimation: 0,
+        time: 0
+      },
+      right: {
+        animations: [],
+        activeAnimation: 0,
+        time: 0
+      }
     };
 
     const light = new AmbientLight('#FFFFFF', 0.6);
@@ -159,8 +218,8 @@ export class WebGL {
   private _tick() {
     const delta = this._clock.getDelta();
 
-    if (this._players.left.mixer) this._players.left.mixer.update(delta);
-    if (this._players.right.mixer) this._players.right.mixer.update(delta);
+    _updateMixer(this._players.left, delta);
+    _updateMixer(this._players.right, delta);
 
     this._renderer.render(this._scene, this._camera);
 
@@ -200,16 +259,16 @@ export class WebGL {
 
   private _createWrapper() {
     const wrapper = document.createElement('div');
-    wrapper.classList.add(`${className}wrapper`);
+    wrapper.classList.add(`${CLASS_NAME}wrapper`);
     this._container.appendChild(wrapper);
     return wrapper;
   }
   private _createBG() {
     const bg = document.createElement('div');
-    bg.classList.add(`${className}bg`);
+    bg.classList.add(`${CLASS_NAME}bg`);
 
     const inner = document.createElement('div');
-    inner.classList.add(`${className}bg-inner`);
+    inner.classList.add(`${CLASS_NAME}bg-inner`);
 
     for (let i = 0; 12 > i; i++) {
       inner.appendChild(document.createElement('span'));
@@ -351,16 +410,20 @@ export class WebGL {
     const {master, shadow, left, right} = this._players;
 
     const mixerLeft = new AnimationMixer(leftGLTF.scene);
-    const mixerRight = new AnimationMixer(rightGLTF.scene);
 
-    const actionLeft = mixerLeft.clipAction(leftGLTF.animations[0]);
-    const actionRight = mixerRight.clipAction(rightGLTF.animations[0]);
-
+    const actionLeft = mixerLeft.clipAction(leftGLTF.animations[left.activeAnimation]);
+    // mixerLeft.addEventListener('finished', () => _setClip(this._players.left, this._state === 3));
     this._players.left.mixer = mixerLeft;
-    this._players.right.mixer = mixerRight;
+    this._players.left.animations = leftGLTF.animations;
     actionLeft.play();
+    mixerLeft.setTime(leftGLTF.animations[0].duration / 3);
+
+    const mixerRight = new AnimationMixer(rightGLTF.scene);
+    const actionRight = mixerRight.clipAction(rightGLTF.animations[right.activeAnimation]);
+    // mixerLeft.addEventListener('finished', () => _setClip(this._players.right, this._state === 4));
+    this._players.right.mixer = mixerRight;
+    this._players.right.animations = rightGLTF.animations;
     actionRight.play();
-    mixerLeft.setTime(1);
 
     // const props = ['map'] as const;
 
@@ -373,6 +436,10 @@ export class WebGL {
           basic.transparent = true;
           basic.opacity = 0;
           basic.side = FrontSide;
+
+          // костыль:
+          // какие модели - такая реализация
+          if (obj.name === 'Skin_02003') obj.frustumCulled = false;
 
           // const params: MeshStandardMaterialParameters = {};
           //
@@ -534,16 +601,17 @@ export class WebGL {
     if (this._isLoaded) return;
 
     const textureLoader = new TextureLoader();
-    const texturePromise = new Promise<Texture>((resolve, reject) => {
+    const textureTicketPromise = new Promise<Texture>((resolve, reject) => {
       textureLoader.load(ticketTexture, resolve, () => {}, reject);
     });
 
     const modelLoader = new GLTFLoader();
-    const leftPlayerPromise = modelLoader.loadAsync('./models/girl_shadow.gltf');
-    const rightPlayerPromise = modelLoader.loadAsync('./models/man_shadow.gltf');
+    modelLoader.setPath('./models/')
+    const leftPlayerPromise = modelLoader.loadAsync('woman_anim_5.gltf');
+    const rightPlayerPromise = modelLoader.loadAsync('man_anim_5.gltf');
 
-    // await Promise.all([texturePromise, leftPlayerPromise]);
-    const ticket = await texturePromise;
+    // await Promise.all([textureTicketPromise, leftPlayerPromise]);
+    const ticket = await textureTicketPromise;
     this._createTicket(ticket);
 
     const left = await leftPlayerPromise;
@@ -556,8 +624,8 @@ export class WebGL {
 
     this._isLoaded = true;
   }
-  public set onChange(func: (state: State) => void) {
-    this._onChange = func;
+  public set onChange(func: OnChangeHandler | null) {
+    this._onChange = func ? func : () => {};
   }
   // TODO: если понадобится - допишу
   // public set onProgress(func: (progress: number) => void) {
@@ -648,7 +716,12 @@ export class WebGL {
           isVisible: true
         },
           () => {},
-          () => this._onChange(2));
+          () => {
+            this._onChange(2);
+
+            _setClip(this._players.left, 0);
+            _setClip(this._players.right, 0);
+          });
         break;
       }
       case 3: {
@@ -667,7 +740,11 @@ export class WebGL {
             isVisible: true
         },
           () => {},
-          () => this._onChange(3));
+          () => {
+            this._onChange(3);
+            _setClip(this._players.left, 1);
+            _setClip(this._players.right, 0);
+          });
         break;
       }
       case 4: {
@@ -686,7 +763,11 @@ export class WebGL {
             isVisible: true
         },
           () => {},
-          () => this._onChange(4));
+          () => {
+            this._onChange(4);
+            _setClip(this._players.left, 0);
+            _setClip(this._players.right, 1);
+          });
         break;
       }
       case 5: {
@@ -723,7 +804,7 @@ export class WebGL {
       }
     }
 
-    this._wrapper.className = `${className}wrapper step-${state}`;
+    this._wrapper.className = `${CLASS_NAME}wrapper step-${state}`;
 
     this._state = state;
   }
