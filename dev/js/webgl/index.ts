@@ -1,8 +1,8 @@
 import './styles/style.scss';
 
 import {
-  ACESFilmicToneMapping, AmbientLight, AnimationClip, AnimationMixer, Clock, Color,
-  FrontSide, Group, LinearFilter, Mesh, MeshBasicMaterial, MeshStandardMaterial,
+  ACESFilmicToneMapping, AmbientLight, AnimationAction, AnimationClip, AnimationMixer, Clock, Color,
+  FrontSide, Group, LinearFilter, LoopOnce, Mesh, MeshBasicMaterial, MeshStandardMaterial,
   NearestFilter, PCFSoftShadowMap, PerspectiveCamera, PlaneGeometry, PointLight,
   Scene, ShadowMaterial, sRGBEncoding, Texture, TextureLoader, WebGLRenderer
 } from 'three';
@@ -47,6 +47,7 @@ type TicketChangeEvent = {
 }
 interface Player {
   mixer?: AnimationMixer;
+  actions: AnimationAction[];
   animations: AnimationClip[];
   activeAnimation: number;
   time: number;
@@ -86,11 +87,17 @@ const _updateMixer = (player: Player, delta: number) => {
 
 // Хотелось бы запускать анимацию после того, как закончится предыдущая,
 // но в трихе все через ж
-// const _setClip = (player: Player, isChange: boolean) => {
-//   const {mixer, animations, activeAnimation} = player;
+// const _setClip = (player: Player, isChange: boolean, debugString?: string) => {
+//   const {mixer, action, animations, activeAnimation} = player;
 //   if (!mixer) return;
 //
 //   let newAnimation = 0;
+//
+//   const refresh = () => {
+//     player.activeAnimation = newAnimation;
+//     player.time = 0;
+//     mixer.setTime(0);
+//   }
 //
 //   if (isChange) {
 //     if (activeAnimation === 0) {
@@ -99,24 +106,35 @@ const _updateMixer = (player: Player, delta: number) => {
 //       newAnimation = 0;
 //     }
 //   } else {
-//     if (activeAnimation === 0) return;
+//     if (activeAnimation === 0) {
+//       refresh();
+//       return;
+//     }
 //   }
-//   console.log(isChange)
-//   player.activeAnimation = newAnimation;
-//   player.time = 0;
-//   mixer.stopAllAction();
-//   const action = mixer.clipAction(animations[newAnimation]);
-//   action.play();
+//   console.log(isChange, debugString)
+//   refresh();
+//   // mixer.stopAllAction();
+//   action?.stop();
+//
+//   const newAction = mixer.clipAction(animations[newAnimation]);
+//   newAction.play();
+//   player.action = newAction;
 // }
 
-const _setClip = (player: Player, clip: number) => {
-  const {mixer, animations, activeAnimation} = player;
+const _setClipHard = (player: Player, clip: number) => {
+  const {mixer, actions, animations, activeAnimation} = player;
   if (!mixer || activeAnimation === clip) return;
 
+  const prevAction = actions[activeAnimation]
+  const newAction = actions[clip];
+  newAction.reset();
+  newAction.play();
+  prevAction.crossFadeTo(newAction, 0.5, false);
+  // mixer.stopAllAction();
+  // action.stop();
+  // newAction.play();
+
   player.activeAnimation = clip;
-  mixer.stopAllAction();
-  const action = mixer.clipAction(animations[clip]);
-  action.play();
 }
 
 export class WebGL {
@@ -184,11 +202,13 @@ export class WebGL {
       master: new Group(),
       shadow: new ShadowMaterial(),
       left: {
+        actions: [],
         animations: [],
         activeAnimation: 0,
         time: 0
       },
       right: {
+        actions: [],
         animations: [],
         activeAnimation: 0,
         time: 0
@@ -409,21 +429,25 @@ export class WebGL {
   private _createPlayer(leftGLTF: GLTF, rightGLTF: GLTF) {
     const {master, shadow, left, right} = this._players;
 
-    const mixerLeft = new AnimationMixer(leftGLTF.scene);
+    const processGLTF = (player: Player, gltf: GLTF, isDelay?: boolean) => {
+      const mixer = new AnimationMixer(gltf.scene);
+      // mixer.addEventListener('finished', () => _setClip(player, this._state === 3, 'left'));
+      mixer.addEventListener('finished', () => _setClipHard(player, 0));
+      player.mixer = mixer;
+      player.actions = gltf.animations.map((clip, index) => {
+        const action = mixer.clipAction(clip);
+        if (index !== 0) {
+          action.loop = LoopOnce;
+        }
+        return action;
+      });
+      player.actions[0].play();
+      player.animations = gltf.animations;
+      if (isDelay) mixer.setTime(gltf.animations[0].duration / 3);
+    }
 
-    const actionLeft = mixerLeft.clipAction(leftGLTF.animations[left.activeAnimation]);
-    // mixerLeft.addEventListener('finished', () => _setClip(this._players.left, this._state === 3));
-    this._players.left.mixer = mixerLeft;
-    this._players.left.animations = leftGLTF.animations;
-    actionLeft.play();
-    mixerLeft.setTime(leftGLTF.animations[0].duration / 3);
-
-    const mixerRight = new AnimationMixer(rightGLTF.scene);
-    const actionRight = mixerRight.clipAction(rightGLTF.animations[right.activeAnimation]);
-    // mixerLeft.addEventListener('finished', () => _setClip(this._players.right, this._state === 4));
-    this._players.right.mixer = mixerRight;
-    this._players.right.animations = rightGLTF.animations;
-    actionRight.play();
+    processGLTF(this._players.left, leftGLTF, true);
+    processGLTF(this._players.right, rightGLTF);
 
     // const props = ['map'] as const;
 
@@ -719,8 +743,8 @@ export class WebGL {
           () => {
             this._onChange(2);
 
-            _setClip(this._players.left, 0);
-            _setClip(this._players.right, 0);
+            _setClipHard(this._players.left, 0);
+            _setClipHard(this._players.right, 0);
           });
         break;
       }
@@ -742,8 +766,9 @@ export class WebGL {
           () => {},
           () => {
             this._onChange(3);
-            _setClip(this._players.left, 1);
-            _setClip(this._players.right, 0);
+
+            _setClipHard(this._players.left, 1);
+            _setClipHard(this._players.right, 0);
           });
         break;
       }
@@ -765,8 +790,9 @@ export class WebGL {
           () => {},
           () => {
             this._onChange(4);
-            _setClip(this._players.left, 0);
-            _setClip(this._players.right, 1);
+
+            _setClipHard(this._players.left, 0);
+            _setClipHard(this._players.right, 1);
           });
         break;
       }
